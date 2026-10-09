@@ -1,15 +1,14 @@
-// CONFIGURACIÓN DE FIREBASE (Base de datos en tiempo real)
+// CONFIGURACIÓN DE FIREBASE
 const firebaseConfig = {
   databaseURL: "https://amphitheater-rave-default-rtdb.firebaseio.com"
 };
 
-// Inicializar Firebase
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.database();
 
-// VARIABLES GLOBALES Y DE ESTADO
+// VARIABLES GLOBALES
 let currentUser = "";
 let currentRoom = "";
 let ytPlayer = null;
@@ -20,7 +19,10 @@ let isSettingStateLocally = false;
 const lobby = document.getElementById("lobby");
 const inputUsername = document.getElementById("input-username");
 const inputRoom = document.getElementById("input-room");
-const btnEnter = document.getElementById("btn-enter");
+const btnGenerateRoom = document.getElementById("btn-generate-room");
+const btnCreate = document.getElementById("btn-create");
+const btnJoin = document.getElementById("btn-join");
+
 const badgeRoom = document.getElementById("badge-room");
 const btnShareLink = document.getElementById("btn-share-link");
 
@@ -35,7 +37,13 @@ const chatMessages = document.getElementById("chat-messages");
 const inputChat = document.getElementById("input-chat");
 const btnSendChat = document.getElementById("btn-send-chat");
 
-// AUTO-DETECCIÓN DE SALA EN LA URL (?room=...)
+// GENERAR ID AUTOMÁTICO PARA NUEVA SALA
+btnGenerateRoom.addEventListener("click", () => {
+  const randomId = "sala-" + Math.random().toString(36).substring(2, 8);
+  inputRoom.value = randomId;
+});
+
+// AUTO-DETECCIÓN DE SALA EN LA URL
 window.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get("room");
@@ -44,48 +52,55 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// UNIRSE O CREAR SALA EN AMPHITHEATER
-btnEnter.addEventListener("click", joinRoom);
+// EVENTOS DE CREAR Y UNIRSE
+btnCreate.addEventListener("click", () => {
+  if (!inputRoom.value.trim()) {
+    btnGenerateRoom.click(); // Asigna un ID automático si está vacío
+  }
+  enterRoom(true);
+});
 
-function joinRoom() {
-  currentUser = inputUsername.value.trim() || "Anónimo";
-  currentRoom = inputRoom.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
-
-  if (!currentRoom) {
-    alert("Ingresa un nombre de sala válido.");
+btnJoin.addEventListener("click", () => {
+  if (!inputRoom.value.trim()) {
+    alert("Ingresa el código o nombre de la sala a la que deseas unirte.");
     return;
   }
+  enterRoom(false);
+});
+
+function enterRoom(isCreating) {
+  currentUser = inputUsername.value.trim() || "Anónimo";
+  currentRoom = inputRoom.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
 
   badgeRoom.textContent = `Sala: ${currentRoom}`;
   lobby.classList.add("hidden");
 
-  // Escuchar nodo de la sala en Firebase
+  // Conectar con la base de datos de Firebase
   roomRef = db.ref(`rooms/${currentRoom}`);
   listenRoomUpdates();
 
-  // Saludo del Agente de IA (AmphiBot)
+  // Mensaje inicial de bienvenida de AmphiBot
   setTimeout(() => {
-    sendBotMessage(`¡Hola ${currentUser}! 👋 Te doy la bienvenida a Amphitheater. Soy AmphiBot, la IA anfitriona de la sala. Puedes hablar conmigo escribiendo @amphi o pedirme que configure la sala.`);
+    const actionText = isCreating ? "has creado esta nueva sala" : "te has unido a la sala";
+    sendBotMessage(`¡Hola ${currentUser}! 👋 Te doy la bienvenida a Amphitheater. Veo que ${actionText}. Soy AmphiBot, la IA anfitriona. Escribe @amphi para conversar o pedirme ayuda.`);
   }, 1000);
 }
 
-// COPIAR ENLACE DIRECTO A LA SALA
+// COPIAR ENLACE
 btnShareLink.addEventListener("click", () => {
   const shareUrl = `${window.location.origin}${window.location.pathname}?room=${currentRoom}`;
   navigator.clipboard.writeText(shareUrl);
-  alert("¡Enlace de Amphitheater copiado al portapapeles!");
+  alert("¡Enlace copiado! Envíalo para que se unan a esta sala.");
 });
 
-// YOUTUBE IFRAME API READY
+// YOUTUBE API READY
 window.onYouTubeIframeAPIReady = function() {
   ytPlayer = new YT.Player("yt-player", {
     height: "100%",
     width: "100%",
-    videoId: "5qap5aO4i9A", // Video inicial por defecto
+    videoId: "5qap5aO4i9A",
     playerVars: { autoplay: 0, controls: 1 },
-    events: {
-      'onStateChange': onPlayerStateChange
-    }
+    events: { 'onStateChange': onPlayerStateChange }
   });
 };
 
@@ -107,7 +122,7 @@ function onPlayerStateChange(event) {
   }
 }
 
-// CARGAR NUEVO VIDEO EN LA SALA
+// CARGAR NUEVO VIDEO
 btnChangeVideo.addEventListener("click", () => {
   const url = inputMediaUrl.value.trim();
   if (!url) return;
@@ -136,9 +151,8 @@ function loadMediaUrl(url) {
   }
 }
 
-// ESCUCHAR EVENTOS DE FIREBASE
+// ESCUCHAR CAMBIOS EN FIREBASE
 function listenRoomUpdates() {
-  // Sincronizar estado del reproductor
   roomRef.child("playback").on("value", (snapshot) => {
     const data = snapshot.val();
     if (!data) return;
@@ -174,19 +188,17 @@ function listenRoomUpdates() {
     setTimeout(() => { isSettingStateLocally = false; }, 500);
   });
 
-  // Sincronizar chat e interacción con AmphiBot
   roomRef.child("chat").on("child_added", (snapshot) => {
     const msg = snapshot.val();
     appendChatMessage(msg.user, msg.text);
 
-    // Si el mensaje es de un usuario y menciona al bot de IA
     if (msg.user !== "🤖 AmphiBot" && isBotMentioned(msg.text)) {
       handleBotResponse(msg.user, msg.text);
     }
   });
 }
 
-// ENVIAR Y MOSTRAR MENSAJES DE CHAT
+// CHAT
 btnSendChat.addEventListener("click", sendChat);
 inputChat.addEventListener("keypress", (e) => { if (e.key === "Enter") sendChat(); });
 
@@ -232,7 +244,7 @@ function appendChatMessage(user, text) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// LÓGICA DEL AGENTE DE IA (AMPHIBOT)
+// AMPHIBOT
 function isBotMentioned(text) {
   const lower = text.toLowerCase();
   return lower.includes("@amphi") || lower.includes("amphibot") || lower.includes("bot,") || lower.includes("bot ");
@@ -241,27 +253,24 @@ function isBotMentioned(text) {
 function handleBotResponse(user, userText) {
   const cleanText = userText.toLowerCase();
 
-  // Comandos de reproductor vía IA
   if (cleanText.includes("pon ") || cleanText.includes("reproduce ") || cleanText.includes("cambia a ")) {
     if (cleanText.includes("http://") || cleanText.includes("https://")) {
       const urlMatch = userText.match(/(https?:\/\/[^\s]+)/g);
       if (urlMatch && urlMatch[0]) {
         loadMediaUrl(urlMatch[0]);
-        sendBotMessage(`¡Entendido ${user}! He cargado el enlace directamente en el reproductor de Amphitheater. 🎬`);
+        sendBotMessage(`¡Entendido ${user}! He cargado el enlace en la sala de Amphitheater. 🎬`);
         return;
       }
     } else {
-      sendBotMessage(`¡Excelente opción, ${user}! Pega el enlace de YouTube o MP4 en la barra inferior para reproducirlo en la sala.`);
+      sendBotMessage(`¡Buena elección, ${user}! Pega el enlace de YouTube o MP4 abajo para reproducirlo en la sala.`);
       return;
     }
   }
 
-  // Respuestas conversacionales de anfitrión
   const botResponses = [
-    `¡Hola ${user}! Qué gran ambiente hay en Amphitheater hoy. 🎧`,
-    `¡Totalmente! Estoy listo para lo que deseen ver a continuación en la sala. ✨`,
-    `¡Aquí reportándome! Como IA anfitriona de Amphitheater, quedo atento a cualquier comando o sugerencia. 🎬`,
-    `¡Me encanta esa idea! Recuerda que puedes enviarme o pegar cualquier enlace para reproducirlo juntos.`
+    `¡Hola ${user}! Excelente ambiente hoy en Amphitheater. 🎧`,
+    `¡Totalmente! Quedo atento a lo que quieran ver en la sala. ✨`,
+    `¡Aquí reportándome! Como IA anfitriona, estoy a su disposición.`
   ];
 
   const randomReply = botResponses[Math.floor(Math.random() * botResponses.length)];
