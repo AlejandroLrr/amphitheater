@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amphitheater - Streaming & Chat Synced</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              900: '#4c1d95',
+              950: '#0f0728',
+            },
+            neon: {
+              pink: '#ff007f',
+              cyan: '#00f3ff',
+              purple: '#9d00ff'
+            }
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            glow: {
+              '0%': { boxShadow: '0 0 5px rgba(157, 0, 255, 0.4), 0 0 10px rgba(157, 0, 255, 0.2)' },
+              '100%': { boxShadow: '0 0 20px rgba(0, 243, 255, 0.6), 0 0 30px rgba(255, 0, 127, 0.4)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #070711;
+      color: #f1f5f9;
+      overflow-x: hidden;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d0e1e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #26294a;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #8b5cf6;
+    }
+
+    /* Neon border effects */
+    .neon-border-pink {
+      box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
+      border-color: rgba(255, 0, 127, 0.5);
+    }
+    .neon-border-cyan {
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+      border-color: rgba(0, 243, 255, 0.5);
+    }
+    .neon-text-glow {
+      text-shadow: 0 0 8px rgba(168, 85, 247, 0.6), 0 0 20px rgba(236, 72, 153, 0.4);
+    }
+
+    /* Video player container styling */
+    .aspect-video-container {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      height: 0;
+      overflow: hidden;
+    }
+    .aspect-video-container iframe,
+    .aspect-video-container video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#070711] text-slate-100 antialiased selection:bg-purple-600 selection:text-white">
+
+  <!-- NOTIFICATION TOAST CONTAINER -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- LOBBY SCREEN OVERLAY -->
+  <div id="lobby" class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#070711]/95 backdrop-blur-xl transition-all duration-500">
+    <!-- Ambient background glows -->
+    <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <div class="w-full max-w-lg bg-slate-900/90 border border-purple-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-purple-950/50 relative overflow-hidden backdrop-blur-2xl">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-neon-pink via-purple-500 to-neon-cyan"></div>
+      
+      <!-- Brand Logo -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-purple-700 via-pink-600 to-cyan-400 p-0.5 shadow-lg shadow-purple-500/30 mb-4 animate-glow">
+          <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+            <i class="fa-solid fa-masks-theater text-3xl text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-300"></i>
+          </div>
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight neon-text-glow text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-300">
+          AMPHITHEATER
+        </h1>
+        <p class="text-slate-400 text-xs sm:text-sm mt-2 font-medium">Sincroniza videos, escucha música y disfruta junto a tu comunidad e IA en tiempo real.</p>
+      </div>
+
+      <!-- Form Inputs -->
+      <div class="space-y-5">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+            <i class="fa-solid fa-user-tag text-purple-400 mr-1.5"></i> Tu Apodo / Username
+          </label>
+          <div class="relative">
+            <input type="text" id="input-username" placeholder="Ej: CyberWatcher" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/80 focus:border-purple-500 transition shadow-inner">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300">
+              <i class="fa-solid fa-door-open text-pink-400 mr-1.5"></i> Código o Nombre de Sala
+            </label>
+            <button id="btn-generate-room" type="button" class="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-1 hover:underline transition">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Generar ID
+            </button>
+          </div>
+          <input type="text" id="input-room" placeholder="Ej: cine-cyberpunk-2099" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/80 focus:border-purple-500 transition shadow-inner">
+        </div>
+
+        <!-- Primary Action Buttons -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+          <button id="btn-create" type="button" class="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-purple-600/30 transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2">
+            <span class="absolute inset-0 w-full h-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
+            <i class="fa-solid fa-plus-circle text-lg"></i>
+            <span>Crear Sala</span>
+          </button>
+          
+          <button id="btn-join" type="button" class="group bg-slate-800 hover:bg-slate-700/90 border border-slate-700 text-slate-100 font-bold py-3.5 px-4 rounded-xl transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2 hover:border-purple-500/50">
+            <i class="fa-solid fa-right-to-bracket text-lg text-cyan-400"></i>
+            <span>Unirse a Sala</span>
+          </button>
+        </div>
+
+        <p class="text-center text-xs text-slate-500 pt-2">
+          <i class="fa-solid fa-shield-halved mr-1"></i> Estado sincronizado localmente con persistencia automática.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP INTERFACE -->
+  <div id="app" class="flex-1 flex flex-col lg:flex-row h-screen overflow-hidden">
+    
+    <!-- LEFT/CENTER: MEDIA THEATER AREA -->
+    <div class="flex-1 flex flex-col bg-[#070711] relative overflow-y-auto lg:overflow-hidden">
+      
+      <!-- HEADER BAR -->
+      <header class="h-16 bg-slate-900/90 backdrop-blur border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-masks-theater text-xl text-pink-500"></i>
+            <span class="font-extrabold tracking-tight text-lg text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 hidden sm:inline">AMPHITHEATER</span>
+          </div>
+          <div id="badge-room" class="bg-purple-500/10 text-purple-300 border border-purple-500/30 text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="room-display-id">Sala: Default</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="btn-share-link" title="Copiar enlace de sala" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded-xl border border-slate-700 flex items-center gap-2 transition active:scale-95">
+            <i class="fa-solid fa-share-nodes text-cyan-400"></i>
+            <span class="hidden sm:inline font-semibold">Compartir Enlace</span>
+          </button>
+          
+          <button id="btn-leave-room" title="Salir de la sala" class="text-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold active:scale-95">
+            <i class="fa-solid fa-door-open"></i>
+            <span class="hidden sm:inline">Salir</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- MAIN VIDEO DISPLAY CONTROLS -->
+      <div class="flex-1 relative bg-black flex items-center justify-center group overflow-hidden">
+        
+        <!-- YOUTUBE IFRAME CONTAINER -->
+        <div id="yt-container" class="w-full h-full absolute inset-0">
+          <div id="yt-player" class="w-full h-full"></div>
+        </div>
+
+        <!-- HTML5 NATIVE VIDEO PLAYER -->
+        <video id="web-player" class="w-full h-full absolute inset-0 object-contain hidden" crossorigin="anonymous"></video>
+
+        <!-- EMPTY STATE SCREEN -->
+        <div id="empty-state" class="text-center p-8 z-10 hidden max-w-md">
+          <div class="w-20 h-20 mx-auto mb-4 rounded-3xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-xl shadow-purple-900/20">
+            <i class="fa-solid fa-clapperboard text-3xl text-pink-400"></i>
+          </div>
+          <h2 class="text-xl font-bold text-white mb-2">Ningún video en reproducción</h2>
+          <p class="text-slate-400 text-sm mb-4">Pega una URL de YouTube o un archivo MP4/WebM directo en la barra inferior, o elige un preset rápido.</p>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border-t border-slate-800/80 p-3 sm:p-4 space-y-3 shrink-0">
+        
+        <!-- CUSTOM PLAYER TIMELINE & INTERACTIVE CONTROL BUTTONS -->
+        <div class="flex flex-wrap items-center justify-between gap-3 text-slate-300">
+          
+          <div class="flex items-center gap-2">
+            <button id="ctrl-play-pause" class="w-10 h-10 rounded-xl bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center shadow-lg shadow-purple-600/30 transition active:scale-95">
+              <i class="fa-solid fa-play text-sm" id="ctrl-play-icon"></i>
+            </button>
+            <button id="ctrl-sync" title="Forzar resincronización de sala" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 flex items-center gap-1.5 transition active:scale-95 font-semibold">
+              <i class="fa-solid fa-rotate-right text-purple-400"></i>
+              <span>Sincronizar</span>
+            </button>
+            <span id="player-time-display" class="text-xs font-mono text-slate-400 ml-1">00:00 / 00:00</span>
+          </div>
+
+          <!-- Timeline Slider -->
+          <div class="flex-1 min-w-[150px] mx-2">
+            <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+          </div>
+
+          <!-- Volume & Sound Controls -->
+          <div class="flex items-center gap-2">
+            <button id="ctrl-mute" class="text-slate-400 hover:text-white text-sm w-8 h-8 flex items-center justify-center transition">
+              <i class="fa-solid fa-volume-high" id="ctrl-mute-icon"></i>
+            </button>
+            <input type="range" id="volume-bar" min="0" max="100" value="80" class="w-20 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 hidden sm:block">
+          </div>
+        </div>
+
+        <!-- URL MEDIA INPUT & LOAD BUTTON -->
+        <div class="flex gap-2">
+          <div class="relative flex-1">
+            <i class="fa-solid fa-link absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+            <input type="text" id="input-media-url" placeholder="Pega un enlace de YouTube o vídeo MP4 directo..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition">
+          </div>
+          <button id="btn-change-video" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition flex items-center gap-2 shadow-lg shadow-purple-600/20 shrink-0">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Cargar Video</span>
+          </button>
+        </div>
+
+        <!-- PRESET MEDIA QUICK LAUNCH BUTTONS -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          <span class="text-slate-500 font-bold uppercase text-[10px] tracking-wider shrink-0 mr-1">Presets Rápidos:</span>
+          <button class="btn-preset bg-slate-800/80 hover:bg-purple-900/40 hover:border-purple-500/50 border border-slate-700/60 text-slate-300 px-3 py-1.5 rounded-lg shrink-0 transition flex items-center gap-1.5" data-url="https://www.youtube.com/watch?v=jfKfPfyJRdk">
+            <i class="fa-solid fa-headphones text-purple-400"></i> Lofi Chill Beats
+          </button>
+          <button class="btn-preset bg-slate-800/80 hover:bg-purple-900/40 hover:border-purple-500/50 border border-slate-700/60 text-slate-300 px-3 py-1.5 rounded-lg shrink-0 transition flex items-center gap-1.5" data-url="https://www.youtube.com/watch?v=4xDzrJKXOOY">
+            <i class="fa-solid fa-bolt text-cyan-400"></i> Synthwave Cyberpunk
+          </button>
+          <button class="btn-preset bg-slate-800/80 hover:bg-purple-900/40 hover:border-purple-500/50 border border-slate-700/60 text-slate-300 px-3 py-1.5 rounded-lg shrink-0 transition flex items-center gap-1.5" data-url="https://www.youtube.com/watch?v=17XyOa5vQp8">
+            <i class="fa-solid fa-tv text-pink-400"></i> Anime Trailer Mix
+          </button>
+          <button class="btn-preset bg-slate-800/80 hover:bg-purple-900/40 hover:border-purple-500/50 border border-slate-700/60 text-slate-300 px-3 py-1.5 rounded-lg shrink-0 transition flex items-center gap-1.5" data-url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
+            <i class="fa-solid fa-file-video text-emerald-400"></i> Sample MP4 Direct
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR: CHAT & AI HOST (AMPHIBOT) -->
+    <div class="w-full lg:w-96 bg-slate-900/95 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-80 lg:h-full shrink-0">
+      
+      <!-- CHAT HEADER -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-comments text-purple-400"></i>
+          <h3 class="font-bold text-slate-100 text-sm">Chat de Amphitheater</h3>
+        </div>
+        <div class="flex items-center gap-1.5 bg-purple-950/60 border border-purple-500/30 text-purple-300 px-2.5 py-1 rounded-full text-[11px] font-semibold">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>🤖 AmphiBot Activo</span>
+        </div>
+      </div>
+
+      <!-- AMPHIBOT QUICK INTERACTIVE ACTION CHIPS -->
+      <div class="px-3 py-2 bg-slate-950/60 border-b border-slate-800/80 flex items-center gap-1.5 overflow-x-auto text-xs">
+        <button id="btn-ai-recommend" class="bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/30 text-purple-200 px-2.5 py-1 rounded-lg shrink-0 transition flex items-center gap-1">
+          <i class="fa-solid fa-compact-disc text-pink-400"></i> Pedir Recomendación
+        </button>
+        <button id="btn-ai-dj" class="bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-500/30 text-indigo-200 px-2.5 py-1 rounded-lg shrink-0 transition flex items-center gap-1">
+          <i class="fa-solid fa-music text-cyan-400"></i> DJ Modo Romántico
+        </button>
+        <button id="btn-ai-greet" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg shrink-0 transition flex items-center gap-1">
+          <i class="fa-solid fa-hand-wave text-yellow-400"></i> Saludar IA
+        </button>
+      </div>
+
+      <!-- CHAT MESSAGES DISPLAY CONTAINER -->
+      <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm bg-slate-950/40"></div>
+
+      <!-- CHAT INPUT & SEND BUTTON -->
+      <div class="p-3 border-t border-slate-800 bg-slate-950 flex items-center gap-2">
+        <input type="text" id="input-chat" placeholder="Escribe un mensaje o habla con @amphi..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition">
+        <button id="btn-send-chat" class="bg-purple-600 hover:bg-purple-500 text-white w-10 h-10 rounded-xl flex items-center justify-center transition active:scale-95 shadow-md shadow-purple-600/30 shrink-0">
+          <i class="fa-solid fa-paper-plane text-sm"></i>
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    /* AMPHITHEATER APPLICATION CORE LOGIC */
+
+    // STATE MANAGEMENT
+    const state = {
+      user: '',
+      room: '',
+      media: {
+        type: 'yt', // 'yt' or 'web'
+        url: 'https://www.youtube.com/watch?v=jfKfPfyJRdk',
+        videoId: 'jfKfPfyJRdk',
+        isPlaying: false,
+        currentTime: 0
+      },
+      chat: []
+    };
+
+    let ytPlayer = null;
+    let isSettingStateLocally = false;
+    let syncInterval = null;
+
+    // PRESET CATALOG
+    const PRESETS = {
+      'lofi': { type: 'yt', id: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Beats' },
+      'synthwave': { type: 'yt', id: '4xDzrJKXOOY', title: 'Synthwave Radio' },
+      'anime': { type: 'yt', id: '17XyOa5vQp8', title: 'Anime Trailer Mashup' },
+      'kdrama': { type: 'yt', id: '5qap5aO4i9A', title: 'K-Drama Romance OST' }
+    };
+
+    // DOM ELEMENTS
+    const lobby = document.getElementById('lobby');
+    const inputUsername = document.getElementById('input-username');
+    const inputRoom = document.getElementById('input-room');
+    const btnGenerateRoom = document.getElementById('btn-generate-room');
+    const btnCreate = document.getElementById('btn-create');
+    const btnJoin = document.getElementById('btn-join');
+
+    const roomDisplayId = document.getElementById('room-display-id');
+    const btnShareLink = document.getElementById('btn-share-link');
+    const btnLeaveRoom = document.getElementById('btn-leave-room');
+
+    const ytContainer = document.getElementById('yt-container');
+    const webPlayer = document.getElementById('web-player');
+    const emptyState = document.getElementById('empty-state');
+
+    const ctrlPlayPause = document.getElementById('ctrl-play-pause');
+    const ctrlPlayIcon = document.getElementById('ctrl-play-icon');
+    const ctrlSync = document.getElementById('ctrl-sync');
+    const seekBar = document.getElementById('seek-bar');
+    const playerTimeDisplay = document.getElementById('player-time-display');
+    const ctrlMute = document.getElementById('ctrl-mute');
+    const ctrlMuteIcon = document.getElementById('ctrl-mute-icon');
+    const volumeBar = document.getElementById('volume-bar');
+
+    const inputMediaUrl = document.getElementById('input-media-url');
+    const btnChangeVideo = document.getElementById('btn-change-video');
+
+    const chatMessages = document.getElementById('chat-messages');
+    const inputChat = document.getElementById('input-chat');
+    const btnSendChat = document.getElementById('btn-send-chat');
+
+    const btnAiRecommend = document.getElementById('btn-ai-recommend');
+    const btnAiDj = document.getElementById('btn-ai-dj');
+    const btnAiGreet = document.getElementById('btn-ai-greet');
+
+    // INITIALIZATION & EVENT LISTENERS
+    window.addEventListener('DOMContentLoaded', () => {
+      // Auto-fill from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('room');
+      const userParam = urlParams.get('user');
+
+      if (roomParam) inputRoom.value = roomParam;
+      if (userParam) inputUsername.value = userParam;
+
+      // Attach event listeners
+      btnGenerateRoom.addEventListener('click', generateRandomRoomId);
+      btnCreate.addEventListener('click', () => handleEnterRoom(true));
+      btnJoin.addEventListener('click', () => handleEnterRoom(false));
+      btnLeaveRoom.addEventListener('click', leaveRoom);
+      btnShareLink.addEventListener('click', copyShareableLink);
+
+      btnChangeVideo.addEventListener('click', loadUserMedia);
+      ctrlPlayPause.addEventListener('click', togglePlayPause);
+      ctrlSync.addEventListener('click', forceSyncPlayer);
+      seekBar.addEventListener('input', handleSeek);
+      ctrlMute.addEventListener('click', toggleMute);
+      volumeBar.addEventListener('input', handleVolume);
+
+      btnSendChat.addEventListener('click', sendUserChat);
+      inputChat.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendUserChat(); });
+
+      // AI Quick Action Chips
+      btnAiRecommend.addEventListener('click', () => triggerAiAction('recommend'));
+      btnAiDj.addEventListener('click', () => triggerAiAction('dj'));
+      btnAiGreet.addEventListener('click', () => triggerAiAction('greet'));
+
+      // Preset buttons
+      document.querySelectorAll('.btn-preset').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const url = e.currentTarget.getAttribute('data-url');
+          if (url) {
+            inputMediaUrl.value = url;
+            loadUserMedia();
+          }
+        });
+      });
+
+      // Poll seek bar & timeline
+      setInterval(updateTimelineDisplay, 500);
+    });
+
+    // YOUTUBE IFRAME API CALLBACK
+    window.onYouTubeIframeAPIReady = function() {
+      ytPlayer = new YT.Player('yt-player', {
+        height: '100%',
+        width: '100%',
+        videoId: state.media.videoId,
+        playerVars: {
+          'autoplay': 0,
+          'controls': 1,
+          'rel': 0,
+          'modestbranding': 1
+        },
+        events: {
+          'onStateChange': onYTStateChange
+        }
+      });
+    };
+
+    function onYTStateChange(event) {
+      if (isSettingStateLocally) return;
+      if (event.data === YT.PlayerState.PLAYING) {
+        state.media.isPlaying = true;
+        updatePlayIcon(true);
+        saveRoomState();
+      } else if (event.data === YT.PlayerState.PAUSED) {
+        state.media.isPlaying = false;
+        updatePlayIcon(false);
+        saveRoomState();
+      }
+    }
+
+    // LOBBY & ROOM ENTER LOGIC
+    function generateRandomRoomId() {
+      const adjectives = ['cyber', 'neon', 'cosmic', 'synth', 'astral', 'atomic'];
+      const nouns = ['lounge', 'theater', 'haven', 'vault', 'nexus', 'pulse'];
+      const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+      const noun = nouns[Math.floor(Math.random() * nouns.length)];
+      const num = Math.floor(1000 + Math.random() * 9000);
+      inputRoom.value = `${adj}-${noun}-${num}`;
+    }
+
+    function handleEnterRoom(isCreating) {
+      const usernameVal = inputUsername.value.trim() || 'Anónimo';
+      let roomVal = inputRoom.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+
+      if (!roomVal) {
+        generateRandomRoomId();
+        roomVal = inputRoom.value;
+      }
+
+      state.user = usernameVal;
+      state.room = roomVal;
+
+      roomDisplayId.textContent = `Sala: ${currentRoomFormatted(roomVal)}`;
+      lobby.classList.add('opacity-0', 'pointer-events-none');
+      setTimeout(() => lobby.classList.add('hidden'), 500);
+
+      // Load existing room state or initialize
+      loadRoomState(isCreating);
+
+      // Start Sync Loop
+      if (syncInterval) clearInterval(syncInterval);
+      syncInterval = setInterval(syncLoop, 2000);
+
+      showToast(`¡Bienvenido a ${roomVal}!`, 'success');
+
+      // AmphiBot Greeting
+      setTimeout(() => {
+        const actionMsg = isCreating ? 'has creado esta nueva sala' : 'te has unido a la transmisión';
+        sendBotMessage(`¡Hola ${state.user}! 👋 Veo que ${actionMsg}. Soy 🤖 **AmphiBot**, tu anfitrión. Puedes pedirme recomendaciones o ayuda escribiendo **@amphi** en el chat.`);
+      }, 1000);
+    }
+
+    function currentRoomFormatted(r) {
+      return r.length > 18 ? r.substring(0, 18) + '...' : r;
+    }
+
+    function leaveRoom() {
+      if (confirm('¿Estás seguro de que deseas salir de la sala?')) {
+        location.href = window.location.pathname;
+      }
+    }
+
+    function copyShareableLink() {
+      const shareUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(state.room)}`;
+      
+      // Fallback copy execution
+      const dummy = document.createElement('input');
+      document.body.appendChild(dummy);
+      dummy.value = shareUrl;
+      dummy.select();
+      document.execCommand('copy');
+      document.body.removeChild(dummy);
+
+      showToast('¡Enlace de sala copiado al portapapeles!', 'info');
+    }
+
+    // STATE PERSISTENCE & SYNC (LOCALSTORAGE SIMULATION)
+    function getStorageKey() {
+      return `amphitheater_room_${state.room}`;
+    }
+
+    function saveRoomState() {
+      if (!state.room) return;
+      const data = {
+        media: state.media,
+        chat: state.chat,
+        lastUpdatedBy: state.user,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(getStorageKey(), JSON.stringify(data));
+    }
+
+    function loadRoomState(isCreating) {
+      const saved = localStorage.getItem(getStorageKey());
+      if (saved && !isCreating) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.media) state.media = parsed.media;
+          if (parsed.chat) {
+            state.chat = parsed.chat;
+            renderAllChatMessages();
+          }
+        } catch (e) {
+          console.error('Error loading state', e);
+        }
+      } else {
+        // Initialize room state
+        saveRoomState();
+      }
+
+      // Apply initial media
+      applyMediaState();
+    }
+
+    function syncLoop() {
+      if (!state.room) return;
+      const saved = localStorage.getItem(getStorageKey());
+      if (!saved) return;
+
+      try {
+        const parsed = JSON.parse(saved);
+        
+        // Sync media if changed by another user
+        if (parsed.media && (parsed.media.url !== state.media.url || parsed.media.isPlaying !== state.media.isPlaying)) {
+          state.media = parsed.media;
+          applyMediaState();
+        }
+
+        // Sync new chat messages
+        if (parsed.chat && parsed.chat.length > state.chat.length) {
+          const newMessages = parsed.chat.slice(state.chat.length);
+          state.chat = parsed.chat;
+          newMessages.forEach(msg => appendChatMessageUI(msg.user, msg.text));
+        }
+      } catch (e) {
+        console.error('Sync loop error', e);
+      }
+    }
+
+    // MEDIA PLAYER LOGIC
+    function extractYouTubeId(url) {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = url.match(regExp);
+      return (match && match[2].length === 11) ? match[2] : null;
+    }
+
+    function loadUserMedia() {
+      const rawUrl = inputMediaUrl.value.trim();
+      if (!rawUrl) return;
+
+      const ytId = extractYouTubeId(rawUrl);
+      if (ytId) {
+        state.media = {
+          type: 'yt',
+          url: rawUrl,
+          videoId: ytId,
+          isPlaying: true,
+          currentTime: 0
+        };
+      } else {
+        state.media = {
+          type: 'web',
+          url: rawUrl,
+          videoId: null,
+          isPlaying: true,
+          currentTime: 0
+        };
+      }
+
+      applyMediaState();
+      saveRoomState();
+      inputMediaUrl.value = '';
+      showToast('Video cargado y sincronizado.', 'success');
+    }
+
+    function applyMediaState() {
+      isSettingStateLocally = true;
+
+      if (state.media.type === 'yt') {
+        ytContainer.classList.remove('hidden');
+        webPlayer.classList.add('hidden');
+        emptyState.classList.add('hidden');
+
+        if (webPlayer) webPlayer.pause();
+
+        if (ytPlayer && ytPlayer.loadVideoById) {
+          const currentId = ytPlayer.getVideoData ? ytPlayer.getVideoData().video_id : null;
+          if (currentId !== state.media.videoId) {
+            ytPlayer.loadVideoById(state.media.videoId, state.media.currentTime || 0);
+          }
+          if (state.media.isPlaying) {
+            ytPlayer.playVideo();
+          } else {
+            ytPlayer.pauseVideo();
+          }
+        }
+      } else if (state.media.type === 'web') {
+        ytContainer.classList.add('hidden');
+        webPlayer.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+
+        if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+
+        if (webPlayer.src !== state.media.url) {
+          webPlayer.src = state.media.url;
+        }
+
+        if (state.media.isPlaying) {
+          webPlayer.play().catch(() => {});
+        } else {
+          webPlayer.pause();
+        }
+      }
+
+      updatePlayIcon(state.media.isPlaying);
+      setTimeout(() => { isSettingStateLocally = false; }, 600);
+    }
+
+    function togglePlayPause() {
+      state.media.isPlaying = !state.media.isPlaying;
+      applyMediaState();
+      saveRoomState();
+    }
+
+    function updatePlayIcon(isPlaying) {
+      if (isPlaying) {
+        ctrlPlayIcon.className = 'fa-solid fa-pause text-sm';
+      } else {
+        ctrlPlayIcon.className = 'fa-solid fa-play text-sm';
+      }
+    }
+
+    function forceSyncPlayer() {
+      applyMediaState();
+      showToast('Reproductor resincronizado', 'info');
+    }
+
+    function updateTimelineDisplay() {
+      let cur = 0;
+      let dur = 0;
+
+      if (state.media.type === 'yt' && ytPlayer && ytPlayer.getCurrentTime) {
+        cur = ytPlayer.getCurrentTime() || 0;
+        dur = ytPlayer.getDuration() || 0;
+      } else if (state.media.type === 'web' && webPlayer) {
+        cur = webPlayer.currentTime || 0;
+        dur = webPlayer.duration || 0;
+      }
+
+      if (dur > 0) {
+        seekBar.value = (cur / dur) * 100;
+        playerTimeDisplay.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+      } else {
+        seekBar.value = 0;
+        playerTimeDisplay.textContent = '00:00 / 00:00';
+      }
+    }
+
+    function handleSeek() {
+      const pct = seekBar.value / 100;
+      let dur = 0;
+
+      if (state.media.type === 'yt' && ytPlayer && ytPlayer.getDuration) {
+        dur = ytPlayer.getDuration();
+        const target = dur * pct;
+        ytPlayer.seekTo(target, true);
+        state.media.currentTime = target;
+      } else if (state.media.type === 'web' && webPlayer) {
+        dur = webPlayer.duration;
+        const target = dur * pct;
+        webPlayer.currentTime = target;
+        state.media.currentTime = target;
+      }
+      saveRoomState();
+    }
+
+    function toggleMute() {
+      if (state.media.type === 'yt' && ytPlayer) {
+        if (ytPlayer.isMuted()) {
+          ytPlayer.unMute();
+          ctrlMuteIcon.className = 'fa-solid fa-volume-high';
+        } else {
+          ytPlayer.mute();
+          ctrlMuteIcon.className = 'fa-solid fa-volume-xmark text-rose-400';
+        }
+      } else if (webPlayer) {
+        webPlayer.muted = !webPlayer.muted;
+        ctrlMuteIcon.className = webPlayer.muted ? 'fa-solid fa-volume-xmark text-rose-400' : 'fa-solid fa-volume-high';
+      }
+    }
+
+    function handleVolume() {
+      const val = volumeBar.value;
+      if (state.media.type === 'yt' && ytPlayer && ytPlayer.setVolume) {
+        ytPlayer.setVolume(val);
+      } else if (webPlayer) {
+        webPlayer.volume = val / 100;
+      }
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    // CHAT & AMPHIBOT AI HOST LOGIC
+    function sendUserChat() {
+      const text = inputChat.value.trim();
+      if (!text) return;
+
+      const msgObj = {
+        user: state.user,
+        text: text,
+        timestamp: Date.now()
+      };
+
+      state.chat.push(msgObj);
+      appendChatMessageUI(msgObj.user, msgObj.text);
+      saveRoomState();
+
+      inputChat.value = '';
+
+      // Check for AI Agent Mentions
+      if (isBotMentioned(text)) {
+        handleBotResponse(msgObj.user, text);
+      }
+    }
+
+    function sendBotMessage(text) {
+      const msgObj = {
+        user: '🤖 AmphiBot',
+        text: text,
+        timestamp: Date.now()
+      };
+      state.chat.push(msgObj);
+      appendChatMessageUI(msgObj.user, msgObj.text);
+      saveRoomState();
+    }
+
+    function renderAllChatMessages() {
+      chatMessages.innerHTML = '';
+      state.chat.forEach(msg => appendChatMessageUI(msg.user, msg.text));
+    }
+
+    function appendChatMessageUI(user, text) {
+      const isSelf = user === state.user;
+      const isBot = user === '🤖 AmphiBot';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} mb-2`;
+
+      let bubbleStyle = 'bg-slate-800/90 text-slate-200 border border-slate-700/60';
+      if (isSelf) bubbleStyle = 'bg-gradient-to-r from-purple-600 to-pink-600 text-white';
+      if (isBot) bubbleStyle = 'bg-gradient-to-r from-indigo-900/90 to-purple-900/90 text-purple-200 border border-purple-500/40 shadow-md shadow-purple-950/40';
+
+      wrapper.innerHTML = `
+        <span class="text-[10px] text-slate-400 font-semibold mb-1 px-1">${user}</span>
+        <div class="${bubbleStyle} rounded-2xl px-3.5 py-2 max-w-[88%] text-xs sm:text-sm leading-relaxed break-words shadow-sm">
+          ${formatMarkdownText(text)}
+        </div>
+      `;
+
+      chatMessages.appendChild(wrapper);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function formatMarkdownText(txt) {
+      return txt
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>');
+    }
+
+    function isBotMentioned(text) {
+      const lower = text.toLowerCase();
+      return lower.includes('@amphi') || lower.includes('amphibot') || lower.includes('bot,') || lower.includes('bot ');
+    }
+
+    function triggerAiAction(action) {
+      if (action === 'recommend') {
+        sendBotMessage(`🎯 **Recomendación AmphiBot:** ¿Qué tal si escuchamos un poco de *Lofi Chill Beats* o exploramos el tráiler de un anime increíble? ¡Dame luz verde y lo pongo ahora mismo!`);
+      } else if (action === 'dj') {
+        const kdrama = PRESETS.kdrama;
+        state.media = {
+          type: 'yt',
+          url: `https://www.youtube.com/watch?v=${kdrama.id}`,
+          videoId: kdrama.id,
+          isPlaying: true,
+          currentTime: 0
+        };
+        applyMediaState();
+        saveRoomState();
+        sendBotMessage(`🎵 **AmphiBot DJ Modo Romántico Activado:** He cargado el soundtrack perfecto para la sala. ¡A disfrutar de la transmisión! ✨`);
+      } else if (action === 'greet') {
+        sendBotMessage(`👋 ¡Hola a todos en la sala! Soy AmphiBot, su IA anfitriona. Estoy sincronizando el reproductor y lista para ambientar el chat.`);
+      }
+    }
+
+    function handleBotResponse(userName, userText) {
+      const clean = userText.toLowerCase();
+
+      // Show typing indicator
+      setTimeout(() => {
+        if (clean.includes('pon ') || clean.includes('reproduce ') || clean.includes('cambia')) {
+          if (clean.includes('lofi')) {
+            inputMediaUrl.value = 'https://www.youtube.com/watch?v=jfKfPfyJRdk';
+            loadUserMedia();
+            sendBotMessage(`¡Entendido ${userName}! He cargado la radio Lofi Beats en directo. 🎧`);
+          } else if (clean.includes('synthwave') || clean.includes('cyberpunk')) {
+            inputMediaUrl.value = 'https://www.youtube.com/watch?v=4xDzrJKXOOY';
+            loadUserMedia();
+            sendBotMessage(`¡Modo Cyberpunk activado, ${userName}! Reproduciendo Synthwave Radio. ⚡`);
+          } else {
+            sendBotMessage(`¡Excelente opción, ${userName}! Pega el enlace en el campo inferior o presiona **Cargar Video** y lo sincronizaré para todos.`);
+          }
+          return;
+        }
+
+        const responses = [
+          `¡Hola ${userName}! Qué excelente ambiente tenemos en la sala. 🎬`,
+          `¡Totalmente de acuerdo contigo, ${userName}! Todo el reproductor está sincronizado.`,
+          `¡Aquí estoy, ${userName}! Si quieres cambiar de video o escuchar música, solo indícamelo. ✨`,
+          `¡Genial! Si necesitas una recomendación o un tema especial, pídemelo con @amphi.`
+        ];
+
+        const randomReply = responses[Math.floor(Math.random() * responses.length)];
+        sendBotMessage(randomReply);
+      }, 700);
+    }
+
+    // UTILITY TOAST NOTIFICATIONS
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+
+      let icon = 'fa-circle-info text-cyan-400';
+      if (type === 'success') icon = 'fa-circle-check text-emerald-400';
+      if (type === 'error') icon = 'fa-triangle-exclamation text-rose-400';
+
+      toast.className = 'bg-slate-900 border border-slate-700/80 text-slate-100 text-xs sm:text-sm px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 transition-all duration-300 pointer-events-auto transform translate-y-2 opacity-0';
+      toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 50);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
