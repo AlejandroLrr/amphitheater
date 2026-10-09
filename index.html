@@ -127,5 +127,48 @@ $('restartBtn').onclick=()=>{if(currentKind==='youtube'&&player?.seekTo){player.
 $('fullscreenBtn').onclick=()=>{const el=$('videoFrame');if(el.requestFullscreen)el.requestFullscreen();else toast('Pantalla completa no disponible en este navegador.')};
 if(roomParam){$('roomInput').value=roomParam.toUpperCase().slice(0,12)}
 })();
+
+ // Conectar Firebase
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+  import {
+    getAuth,
+    signInAnonymously,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+  import {
+    getFirestore
+  } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+  // Reemplaza estos valores con los de tu proyecto Firebase.
+  const firebaseConfig = {
+    apiKey: "AIzaSyD9AsxkkpR5lQbayN7sR0Re2B5Q_HXz1eQ",
+    authDomain: "amphitheater-7b38f.firebaseapp.com",
+    projectId: "amphitheater-7b38f",
+    storageBucket: "amphitheater-7b38f.firebasestorage.app",
+    messagingSenderId: "675929948000",
+    appId: "1:675929948000:web:a466b152588008b6f86805",
+    measurementId: "G-J9CKTK6SE0"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Iniciar sesión sin pedir correo ni contraseña.
+  signInAnonymously(auth).catch((error) => {
+    console.error("Error de autenticación Firebase:", error);
+  });
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log("Amphitheater conectado a Firebase.");
+      console.log("Usuario anónimo:", user.uid);
+    }
+  });
+
+  // Permite que el resto de la web use Firebase.
+  window.amphiFirebase = { app, auth, db };
 </script>
-</body></html>
+</body>
+</html>
