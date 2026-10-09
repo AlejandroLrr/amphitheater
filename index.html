@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090711"><title>Amphitheater — Watch together</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{color-scheme:dark;--bg:#090711;--panel:#100d1b;--line:#29213b;--purple:#a855f7;--pink:#f472b6;--cyan:#67e8f9}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 20% 0%,#25113c 0,transparent 38%),radial-gradient(ellipse at 90% 30%,#171638 0,transparent 35%),var(--bg);color:#f4f0ff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;min-height:100vh}
+.glass{background:linear-gradient(145deg,rgba(24,18,39,.94),rgba(13,11,23,.96));border:1px solid var(--line);box-shadow:0 16px 50px #0004}
+.neon{box-shadow:0 0 24px #a855f722, inset 0 0 0 1px #c084fc22}.brand{background:linear-gradient(100deg,#e9d5ff,#c084fc 45%,#f0abfc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn{transition:.18s ease;border:1px solid #3a2b52;background:#1b1429}.btn:hover{transform:translateY(-1px);border-color:#a855f7;background:#28183c}.primary{background:linear-gradient(110deg,#9333ea,#c026d3);border:0;box-shadow:0 6px 24px #a855f733}.primary:hover{filter:brightness(1.13)}
+.field{background:#0b0913;border:1px solid #302641;outline:none;transition:.2s}.field:focus{border-color:#a855f7;box-shadow:0 0 0 3px #a855f722}
+.pill{border:1px solid #3c2c54;background:#1a1327}.dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80}
+.chat-scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:#4c3568 transparent}.message{max-width:88%;overflow-wrap:anywhere}.own{background:#382052;border:1px solid #7041a1;border-radius:14px 14px 4px 14px}.other{background:#191424;border:1px solid #30263d;border-radius:14px 14px 14px 4px}.bot{background:linear-gradient(135deg,#1c1835,#251330);border:1px solid #6650a0;border-radius:14px}.video-frame{background:#05040a;aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:14px}.video-frame iframe,.video-frame video{width:100%;height:100%;border:0;position:absolute;inset:0}.empty-player{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at center,#211238,#07060c 72%)}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#49335e;border-radius:8px}
+@media(max-width:850px){.main-grid{grid-template-columns:1fr!important}.chat-panel{min-height:420px}.video-frame{aspect-ratio:16/9}}
+</style>
+</head>
+<body>
+<header class="max-w-[1500px] mx-auto px-4 md:px-7 py-5 flex items-center justify-between gap-4">
+ <a href="#" class="flex items-center gap-3" onclick="return false"><div class="w-10 h-10 rounded-2xl primary flex items-center justify-center text-xl">◈</div><div><div class="text-xl font-black tracking-tight brand">AMPHITHEATER</div><div class="text-[10px] tracking-[.28em] text-violet-300/60 uppercase">watch together · feel closer</div></div></a>
+ <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400"><span class="dot"></span> Tu espacio audiovisual compartido</div>
+ <button id="headerRoom" class="btn rounded-xl px-3 py-2 text-xs hidden">Sala <span id="headerRoomId" class="text-fuchsia-300 font-bold"></span></button>
+</header>
+<main class="max-w-[1500px] mx-auto px-4 md:px-7 pb-8">
+<section id="lobby" class="max-w-3xl mx-auto pt-8 md:pt-16 pb-14">
+ <div class="text-center mb-8"><div class="inline-flex items-center gap-2 pill rounded-full px-4 py-2 text-xs text-violet-200 mb-5"><span class="text-fuchsia-300">✦</span> TU CINE PRIVADO, EN CUALQUIER LUGAR</div><h1 class="text-4xl md:text-6xl font-black tracking-tight leading-tight">Una pantalla.<br><span class="brand">Mil momentos.</span></h1><p class="text-slate-400 mt-4 max-w-xl mx-auto leading-relaxed">Comparte videos, escucha música y conversa en sincronía con las personas que más quieres.</p></div>
+ <div class="glass neon rounded-3xl p-5 md:p-8">
+  <div class="flex items-center gap-3 mb-6"><div class="w-11 h-11 rounded-2xl bg-violet-500/15 border border-violet-400/20 flex items-center justify-center text-xl">✧</div><div><h2 class="font-bold text-lg">Entra al anfiteatro</h2><p class="text-sm text-slate-400">Crea tu sala o vuelve a una invitación.</p></div></div>
+  <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold block mb-2" for="nickname">Tu apodo</label><input id="nickname" class="field w-full rounded-xl px-4 py-3 mb-5" maxlength="24" placeholder="¿Cómo te llamamos?" autocomplete="nickname">
+  <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold block mb-2" for="roomInput">Código de sala</label><div class="flex gap-2 mb-2"><input id="roomInput" class="field min-w-0 flex-1 rounded-xl px-4 py-3 uppercase tracking-widest" maxlength="12" placeholder="EJ. MOON7K"><button id="generate" class="btn rounded-xl px-4 text-sm whitespace-nowrap">✦ Generar</button></div>
+  <div id="lobbyError" class="text-rose-300 text-sm min-h-6 mb-2"></div><div class="grid sm:grid-cols-2 gap-3"><button id="createRoom" class="primary rounded-xl px-4 py-3.5 font-bold">＋ Crear sala</button><button id="joinRoom" class="btn rounded-xl px-4 py-3.5 font-bold">↗ Unirse a sala</button></div>
+  <div class="mt-6 pt-5 border-t border-white/5 flex flex-wrap gap-2 text-xs text-slate-500"><span class="pill rounded-full px-3 py-1.5">◉ Sincronización local de demo</span><span class="pill rounded-full px-3 py-1.5">⌁ YouTube + MP4/WebM</span><span class="pill rounded-full px-3 py-1.5">♡ Hecho para compartir</span></div>
+ </div><p class="text-center text-xs text-slate-600 mt-5">No necesitas instalar nada. Comparte el enlace de la sala para invitar.</p>
+</section>
+<section id="app" class="hidden">
+ <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5"><div><div class="flex items-center gap-3"><span class="dot"></span><span class="text-xs text-emerald-300 uppercase tracking-[.2em]">Sala activa</span><span class="pill rounded-full px-3 py-1 text-xs text-violet-200" id="roomBadge">—</span></div><h1 class="text-2xl md:text-3xl font-black mt-2">Tu <span class="brand">anfiteatro</span></h1><p class="text-sm text-slate-400 mt-1">Hola, <span id="welcomeName" class="text-violet-200"></span>. La noche es tuya.</p></div><div class="flex gap-2"><button id="copyLink" class="btn rounded-xl px-4 py-2.5 text-sm">⧉ Copiar invitación</button><button id="leaveRoom" class="btn rounded-xl px-4 py-2.5 text-sm">Salir</button></div></div>
+ <div class="main-grid grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5">
+  <div class="space-y-5 min-w-0">
+   <section class="glass rounded-2xl p-3 md:p-4">
+    <div class="flex items-center justify-between gap-3 px-1 pb-3"><div><div class="font-bold">Pantalla compartida</div><div class="text-xs text-slate-500 mt-1">Elige algo para ver juntos</div></div><span id="mediaType" class="pill rounded-full px-3 py-1.5 text-[10px] uppercase tracking-wider text-violet-200">En espera</span></div>
+    <div id="videoFrame" class="video-frame"><div class="empty-player" id="emptyPlayer"><div class="px-6"><div class="text-5xl text-violet-300/80 mb-4">▷</div><div class="font-semibold text-lg">La próxima historia empieza aquí</div><p class="text-sm text-slate-400 mt-2">Pega un enlace o selecciona una sugerencia.</p></div></div></div>
+    <div class="grid grid-cols-5 gap-2 mt-3"><button class="btn rounded-lg py-2.5 text-sm" id="playBtn" title="Reproducir">▶ <span class="hidden sm:inline">Play</span></button><button class="btn rounded-lg py-2.5 text-sm" id="pauseBtn" title="Pausar">Ⅱ <span class="hidden sm:inline">Pausa</span></button><button class="btn rounded-lg py-2.5 text-sm" id="muteBtn" title="Silenciar">♫ <span class="hidden sm:inline">Mute</span></button><button class="btn rounded-lg py-2.5 text-sm" id="restartBtn" title="Reiniciar">↺ <span class="hidden sm:inline">Inicio</span></button><button class="btn rounded-lg py-2.5 text-sm" id="fullscreenBtn" title="Pantalla completa">⛶ <span class="hidden sm:inline">Full</span></button></div>
+    <div class="mt-4"><label for="mediaUrl" class="text-xs text-slate-400 block mb-2">CARGAR CONTENIDO · YouTube, MP4 o WebM</label><div class="flex gap-2"><input id="mediaUrl" class="field rounded-xl px-3 py-3 min-w-0 flex-1 text-sm" placeholder="https://youtube.com/watch?v=…"><button id="loadMedia" class="primary rounded-xl px-4 font-bold text-sm">Cargar ↗</button></div><p id="mediaError" class="text-xs text-rose-300 mt-2 min-h-4"></p></div>
+   </section>
+   <section class="glass rounded-2xl p-4"><div class="flex items-center justify-between mb-3"><div><h3 class="font-bold">Un mood para compartir</h3><p class="text-xs text-slate-500 mt-1">Toca una tarjeta para cargar su selección.</p></div><span class="text-fuchsia-300">✦</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <button class="preset btn rounded-xl p-3 text-left" data-url="https://www.youtube.com/watch?v=jfKfPfyJRdk"><div class="text-2xl mb-3">☾</div><div class="font-semibold text-sm">Lo-Fi Nights</div><div class="text-xs text-slate-500 mt-1">Beats para bajar revoluciones</div></button>
+    <button class="preset btn rounded-xl p-3 text-left" data-url="https://www.youtube.com/results?search_query=cinematic+soundtracks+mix"><div class="text-2xl mb-3">♬</div><div class="font-semibold text-sm">Soundtracks</div><div class="text-xs text-slate-500 mt-1">Una escena de película</div></button>
+    <button class="preset btn rounded-xl p-3 text-left" data-url="https://www.youtube.com/results?search_query=anime+dorama+OST+playlist"><div class="text-2xl mb-3">♡</div><div class="font-semibold text-sm">Dorama / Anime OST</div><div class="text-xs text-slate-500 mt-1">Sentimientos en estéreo</div></button>
+   </div></section>
+  </div>
+  <aside class="glass rounded-2xl flex flex-col overflow-hidden chat-panel min-h-[600px]">
+   <div class="p-4 border-b border-white/5 flex items-center justify-between"><div><h2 class="font-bold">Conversación</h2><p class="text-xs text-slate-500 mt-1">Mensajes de esta sala</p></div><div class="pill rounded-full px-3 py-1.5 text-xs text-emerald-300">● En línea (demo)</div></div>
+   <div id="chatMessages" class="chat-scroll flex-1 p-4 space-y-4 min-h-[250px]"><div class="message bot p-3 text-sm"><div class="text-xs text-violet-300 font-bold mb-1">✦ Amphi · anfitrión IA</div>¡Bienvenidos! 💜 Mencióname con <b>@amphi</b> si necesitas ideas para la noche, sugerencias de contenido o un nuevo ambiente para la sala.</div></div>
+   <div class="px-4 pb-2 flex flex-wrap gap-2"><button class="quick btn rounded-full px-3 py-1.5 text-xs" data-msg="@amphi sugiere algo romántico">♡ Mood romántico</button><button class="quick btn rounded-full px-3 py-1.5 text-xs" data-msg="@amphi qué podemos ver">✦ Recomiéndanos algo</button></div>
+   <form id="chatForm" class="p-3 border-t border-white/5"><div class="flex gap-2"><input id="chatInput" class="field rounded-xl px-3 py-3 min-w-0 flex-1 text-sm" placeholder="Escribe algo… @amphi" maxlength="500" autocomplete="off"><button class="primary rounded-xl px-4" aria-label="Enviar mensaje">➤</button></div><div class="text-[10px] text-slate-600 mt-2 px-1">Sé amable. Este chat de demostración vive en este navegador.</div></form>
+  </aside>
+ </div>
+ <footer class="text-center text-xs text-slate-600 py-6">AMPHITHEATER <span class="text-violet-400">✦</span> Diseñado para estar cerca, incluso a distancia.</footer>
+</section>
+</main>
+<div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 glass rounded-xl px-4 py-3 text-sm opacity-0 pointer-events-none transition-opacity z-50"></div>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+let user = '', room = '', player = null, currentKind = '', isMuted = false, isYouTubeReady = false, pendingYT = '';
+const roomParam = new URLSearchParams(location.search).get('room');
+const randomRoom = () => Math.random().toString(36).slice(2,8).toUpperCase();
+$('roomInput').value = roomParam ? roomParam.toUpperCase().slice(0,12) : randomRoom();
+$('generate').onclick = () => $('roomInput').value = randomRoom();
+function toast(msg){$('toast').textContent=msg;$('toast').classList.remove('opacity-0');clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').classList.add('opacity-0'),2300)}
+function enter(create){
+ user=$('nickname').value.trim(); room=$('roomInput').value.trim().toUpperCase().replace(/[^A-Z0-9-]/g,'');
+ if(!user){$('lobbyError').textContent='Escribe un apodo para continuar.';$('nickname').focus();return}
+ if(!room){$('lobbyError').textContent='Escribe un código o genera uno automáticamente.';return}
+ if(create && roomParam && room === roomParam.toUpperCase()) { /* valid: user can create this named room */ }
+ $('lobbyError').textContent='';$('roomBadge').textContent=room;$('headerRoomId').textContent=room;$('headerRoom').classList.remove('hidden');$('welcomeName').textContent=user;
+ $('lobby').classList.add('hidden');$('app').classList.remove('hidden');history.replaceState({},'',location.pathname+'?room='+encodeURIComponent(room));
+ addMessage('Amphi','¡Hola, '+user+'! ✨ '+(create?'Tu sala está lista.':'Ya estás dentro de la sala.')+' Comparte la invitación y elijan qué ver.','bot');
+}
+$('createRoom').onclick=()=>enter(true);$('joinRoom').onclick=()=>enter(false);
+$('leaveRoom').onclick=()=>{if(player){try{player.destroy()}catch(e){}player=null}location.href=location.pathname};
+$('copyLink').onclick=async()=>{const link=location.origin+location.pathname+'?room='+encodeURIComponent(room);try{await navigator.clipboard.writeText(link);toast('¡Enlace copiado! Compártelo con tu persona favorita.')}catch(e){prompt('Copia el enlace de invitación:',link)}};
+function addMessage(name,text,type='other'){
+ const wrap=document.createElement('div');wrap.className='flex '+(type==='own'?'justify-end':'justify-start');
+ const bubble=document.createElement('div');bubble.className='message p-3 text-sm '+(type==='own'?'own':type==='bot'?'bot':'other');
+ const who=document.createElement('div');who.className='text-[11px] font-bold mb-1 '+(type==='own'?'text-fuchsia-200':type==='bot'?'text-violet-300':'text-slate-400');who.textContent=type==='bot'?'✦ '+name+' · anfitrión IA':name;
+ const body=document.createElement('div');body.className='text-slate-100 whitespace-pre-wrap';body.textContent=text;
+ bubble.append(who,body);wrap.append(bubble);$('chatMessages').append(wrap);$('chatMessages').scrollTop=$('chatMessages').scrollHeight;
+}
+function amphiReply(msg){
+ const s=msg.toLowerCase();
+ if(/rom[aá]nt|amor|pareja|cariñ|cita|romance/.test(s)) return 'Para una noche romántica: luz tenue, algo de Lo‑Fi y una película que ambos quieran descubrir. 💜 Puedo cargar una selección si me dices el mood: comedia, drama, anime o música tranquila.';
+ if(/er[oó]tic|sensual|picante|íntim|intim/.test(s)) return 'Podemos darle a la sala un ambiente sensual y elegante: tonos vino, luces púrpura, música downtempo y privacidad. Asegúrense de que todos sean adultos y estén cómodos con el contenido. ¿Prefieren música, una película romántica o una estética más oscura?';
+ if(/diseñ|diseña|tema|ambiente|sala de|crea una sala|cambia.*sala/.test(s)) return '¡Vamos a transformar el ambiente! ✨ Puedo sugerir una estética para esta demo: romance → rosa y violeta suave; cyberpunk → neón cian y magenta; cozy → ámbar y lavanda. En esta versión, el cambio es una sugerencia visual en el chat, no un tema guardado para otros usuarios.';
+ if(/video|pon(er)?|carg(a|ar)|youtube|ver algo|recomiend|sugier/.test(s)) return '¡Claro! Pega una URL de YouTube, MP4 o WebM en la barra del reproductor y pulsa «Cargar». Para una sugerencia rápida, prueba Lo‑Fi Nights o Soundtracks. No puedo buscar ni reproducir contenido nuevo por mi cuenta en esta versión estática.';
+ if(/hola|buenas|hey|holi/.test(s)) return '¡Holaaa! 🌙 Bienvenidos a vuestro rinconcito. ¿Qué vibra buscamos hoy: cozy, romántica, anime o una noche de música?';
+ if(/ayuda|comando|qué puedes|que puedes/.test(s)) return 'Puedes mencionarme con @amphi para pedir ideas de citas, recomendaciones, un mood para la sala o ayuda para cargar contenido. Usa la barra del reproductor para enlaces de YouTube/MP4/WebM y comparte el código para invitar.';
+ return 'Te leo 💜. Cuéntame un poco más del plan y te ayudo a elegir una vibra, una actividad o un tipo de contenido para compartir.';
+}
+$('chatForm').addEventListener('submit',e=>{e.preventDefault();sendChat()});
+function sendChat(text){const input=$('chatInput');const msg=(text??input.value).trim();if(!msg)return;addMessage(user,msg,'own');input.value='';if(/@amphi/i.test(msg)){setTimeout(()=>addMessage('Amphi',amphiReply(msg.replace(/@amphi/ig,'').trim()),'bot'),350)}}
+document.querySelectorAll('.quick').forEach(b=>b.onclick=()=>sendChat(b.dataset.msg));
+function showError(msg){$('mediaError').textContent=msg}
+function clearPlayer(){if(player){try{player.destroy()}catch(e){}player=null}const frame=$('videoFrame');frame.innerHTML='';}
+function youtubeId(url){try{const u=new URL(url);if(u.hostname.includes('youtu.be'))return u.pathname.slice(1).split('/')[0];if(u.hostname.includes('youtube.com')||u.hostname.includes('youtube-nocookie.com')){if(u.pathname==='/watch')return u.searchParams.get('v');if(u.pathname.startsWith('/embed/'))return u.pathname.split('/')[2];if(u.pathname.startsWith('/shorts/'))return u.pathname.split('/')[2]}}catch(e){}return null}
+function loadMedia(raw){
+ const url=raw.trim();showError('');if(!url){showError('Pega una URL para cargar el contenido.');return}
+ let parsed;try{parsed=new URL(url)}catch(e){showError('La URL no parece válida.');return}
+ if(!['http:','https:'].includes(parsed.protocol)){showError('Solo se admiten enlaces HTTP o HTTPS.');return}
+ const id=youtubeId(url);
+ if(id){clearPlayer();currentKind='youtube';$('mediaType').textContent='YouTube';const frame=$('videoFrame');const div=document.createElement('div');div.id='ytplayer';div.style.cssText='position:absolute;inset:0;width:100%;height:100%';frame.append(div);$('emptyPlayer')?.remove();pendingYT=id;loadYTAPI();if(isYouTubeReady)createYT(id);addMessage('Amphi','Contenido de YouTube preparado. Usa los controles del reproductor; algunos vídeos pueden impedir la reproducción incrustada.','bot');return}
+ if(/\.(mp4|webm|ogg)(?:$|[?#])/i.test(parsed.pathname+parsed.search)){
+  clearPlayer();currentKind='video';$('mediaType').textContent='HTML5 Video';const v=document.createElement('video');v.id='nativeVideo';v.controls=true;v.playsInline=true;v.preload='metadata';v.src=url;$('videoFrame').append(v);v.addEventListener('error',()=>showError('No se pudo reproducir este archivo. Comprueba el enlace, el formato y los permisos CORS del alojamiento.'));v.addEventListener('loadedmetadata',()=>showError(''));addMessage('Amphi','Video web cargado. Si no empieza, pulsa Play en el reproductor.','bot');return
+ }
+ showError('Usa un enlace de YouTube o una URL directa terminada en .mp4, .webm u .ogg.');}
+$('loadMedia').onclick=()=>loadMedia($('mediaUrl').value);$('mediaUrl').addEventListener('keydown',e=>{if(e.key==='Enter')loadMedia($('mediaUrl').value)});
+document.querySelectorAll('.preset').forEach(b=>b.onclick=()=>{const url=b.dataset.url;$('mediaUrl').value=url;loadMedia(url);if(url.includes('results?'))toast('Se abrió una búsqueda de YouTube; elige un video y pega su enlace aquí.')});
+function loadYTAPI(){if(window.YT&&window.YT.Player){isYouTubeReady=true;if(pendingYT)createYT(pendingYT);return}if(document.getElementById('yt-api'))return;const s=document.createElement('script');s.id='yt-api';s.src='https://www.youtube.com/iframe_api';document.head.append(s);window.onYouTubeIframeAPIReady=()=>{isYouTubeReady=true;if(pendingYT)createYT(pendingYT)}}
+function createYT(id){if(!window.YT||!window.YT.Player)return;try{player=new YT.Player('ytplayer',{videoId:id,playerVars:{playsinline:1,rel:0},events:{onReady:()=>{},onError:()=>showError('YouTube bloqueó este video incrustado. Prueba otro enlace.')}})}catch(e){showError('No se pudo iniciar el reproductor de YouTube.')}}
+function native(){return $('nativeVideo')}
+$('playBtn').onclick=()=>{if(currentKind==='youtube'&&player?.playVideo)player.playVideo();else if(native())native().play().catch(()=>showError('Pulsa Play en el reproductor para iniciar el video.'));else toast('Carga un video primero.')};
+$('pauseBtn').onclick=()=>{if(currentKind==='youtube'&&player?.pauseVideo)player.pauseVideo();else if(native())native().pause();else toast('Carga un video primero.')};
+$('muteBtn').onclick=()=>{isMuted=!isMuted;if(currentKind==='youtube'&&player){isMuted?player.mute():player.unMute()}else if(native())native().muted=isMuted;$('muteBtn').innerHTML=isMuted?'🔇 <span class="hidden sm:inline">Mute</span>':'♫ <span class="hidden sm:inline">Mute</span>'};
+$('restartBtn').onclick=()=>{if(currentKind==='youtube'&&player?.seekTo){player.seekTo(0,true);player.playVideo()}else if(native()){native().currentTime=0;native().play().catch(()=>{})}else toast('Carga un video primero.')};
+$('fullscreenBtn').onclick=()=>{const el=$('videoFrame');if(el.requestFullscreen)el.requestFullscreen();else toast('Pantalla completa no disponible en este navegador.')};
+if(roomParam){$('roomInput').value=roomParam.toUpperCase().slice(0,12)}
+})();
+</script>
+</body></html>
