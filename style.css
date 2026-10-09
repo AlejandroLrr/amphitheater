@@ -1,14 +1,22 @@
-/* Estilos personalizados para barra de desplazamiento y ajustes fluídos */
+/* Estilos personalizados y barra de desplazamiento fluida */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: #111827;
+  background: #020617;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #374151;
-  border-radius: 3px;
+  background: #1e293b;
+  border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
+  background: #334155;
 }
