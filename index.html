@@ -127,10 +127,10 @@ $('restartBtn').onclick=()=>{if(currentKind==='youtube'&&player?.seekTo){player.
 $('fullscreenBtn').onclick=()=>{const el=$('videoFrame');if(el.requestFullscreen)el.requestFullscreen();else toast('Pantalla completa no disponible en este navegador.')};
 if(roomParam){$('roomInput').value=roomParam.toUpperCase().slice(0,12)}
 })();
+</script>
 
+ <script type="module">
  // Conectar Firebase
-
-<script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
   import {
     getAuth,
